@@ -15,9 +15,12 @@ def load_config():
 def send_beacon(config, packet):
     try:
         # APRS-IS sunucusuna bağlan
-        server = config["aprs"].get("server", "euro.aprs2.net")
-        port = int(config["aprs"].get("port", 14580))
-        AIS = aprslib.IS(config["aprs"]["callsign"], passwd=config["aprs"]["passcode"], port=port, host=server)
+        server = config.get("aprs", {}).get("server", "euro.aprs2.net")
+        port = int(config.get("aprs", {}).get("port", 14580))
+        callsign = config.get("aprs", {}).get("callsign", "")
+        passcode = config.get("aprs", {}).get("passcode", "")
+        
+        AIS = aprslib.IS(callsign, passwd=passcode, port=port, host=server)
         AIS.connect()
         AIS.sendall(packet)
         print(f"Gönderildi: {packet}")
@@ -89,21 +92,21 @@ def send_multiple_beacons():
     weather_info = get_korgan_weather()
     quake_info = get_last_earthquake()
     
-    # Paketleri oluştur
-    packet_1 = build_packet(config.get("packet1", {}), timestamp, weather_info, quake_info)
-    packet_2 = build_packet(config.get("packet2", {}), timestamp, weather_info, quake_info)
+    packets = config.get("packets", [])
     
-    if packet_1:
-        send_beacon(config, packet_1)
+    for i, pkt_cfg in enumerate(packets):
+        packet = build_packet(pkt_cfg, timestamp, weather_info, quake_info)
         
-    if packet_1 and packet_2:
-        delay = config.get("packet2", {}).get("delay_after_packet1_sec", 180)
-        print(f"İkinci veri için {delay} saniye bekleniyor...")
-        sys.stdout.flush()
-        time.sleep(delay)
-        
-    if packet_2:
-        send_beacon(config, packet_2)
+        if packet:
+            send_beacon(config, packet)
+            
+            # Sonraki paket için bekleme süresi
+            delay = pkt_cfg.get("delay_sec", 0)
+            # Eğer dizideki son paket değilse veya özel bir bekleme varsa bekle
+            if delay > 0 and i < len(packets) - 1:
+                print(f"Bir sonraki paket için {delay} saniye bekleniyor...")
+                sys.stdout.flush()
+                time.sleep(delay)
 
 if __name__ == "__main__":
     print("APRS Servisi başlatıldı. İlk paketler gönderiliyor...")
@@ -125,7 +128,7 @@ if __name__ == "__main__":
             print(f"Konfigürasyon okunamadı: {e}, varsayılan 900sn bekleniyor.")
             interval = 900
             
-        print(f"Bir sonraki gönderim için {interval} saniye bekleniyor...")
+        print(f"Genel döngü: Bir sonraki gönderim için {interval} saniye bekleniyor...")
         sys.stdout.flush()
         time.sleep(interval)
         print("Zamanı geldi, paketler gönderiliyor...")

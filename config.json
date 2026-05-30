@@ -5,28 +5,20 @@
     "server": "euro.aprs2.net",
     "port": 14580
   },
-  "packet1": {
-    "enabled": true,
-    "source": "TA7KES-1",
-    "destination": "SDNNET,TCPIP*",
-    "latitude": "4048.39N",
-    "longitude": "03720.55E",
-    "symbol_table": "/",
-    "symbol_code": "-",
-    "comment": "145.500MHz Dinlemede | {weather_short} | Kurban Bayraminiz Mubarek Olsun /A=002657"
-  },
-  "packet2": {
-    "enabled": true,
-    "source": "TA7KES-2",
-    "destination": "SDNNET,TCPIP*",
-    "latitude": "4049.34N",
-    "longitude": "03720.77E",
-    "symbol_table": "/",
-    "symbol_code": "y",
-    "comment": "433.500MHz Dinlemede | {weather} | {quake} | Op. Ertugrul SADAN /A=002510",
-    "delay_after_packet1_sec": 180
-  },
   "intervals": {
     "loop_interval_sec": 900
-  }
+  },
+  "packets": [
+    {
+      "enabled": true,
+      "source": "TA7KES-1",
+      "destination": "SDNNET,TCPIP*",
+      "latitude": "4048.39N",
+      "longitude": "03720.55E",
+      "symbol_table": "/",
+      "symbol_code": "-",
+      "comment": "145.500MHz Dinlemede | {weather_short} | Kurban Bayraminiz Mubarek Olsun /A=002657",
+      "delay_sec": 180
+    }
+  ]
 }

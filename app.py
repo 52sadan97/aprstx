@@ -30,32 +30,29 @@ def index():
             config["aprs"]["server"] = request.form.get("aprs_server", "euro.aprs2.net")
             config["aprs"]["port"] = int(request.form.get("aprs_port", 14580))
             
-            # Update Packet 1
-            config.setdefault("packet1", {})
-            config["packet1"]["enabled"] = "packet1_enabled" in request.form
-            config["packet1"]["source"] = request.form.get("packet1_source")
-            config["packet1"]["destination"] = request.form.get("packet1_destination")
-            config["packet1"]["latitude"] = request.form.get("packet1_latitude")
-            config["packet1"]["longitude"] = request.form.get("packet1_longitude")
-            config["packet1"]["symbol_table"] = request.form.get("packet1_symbol_table")
-            config["packet1"]["symbol_code"] = request.form.get("packet1_symbol_code")
-            config["packet1"]["comment"] = request.form.get("packet1_comment")
-            
-            # Update Packet 2
-            config.setdefault("packet2", {})
-            config["packet2"]["enabled"] = "packet2_enabled" in request.form
-            config["packet2"]["source"] = request.form.get("packet2_source")
-            config["packet2"]["destination"] = request.form.get("packet2_destination")
-            config["packet2"]["latitude"] = request.form.get("packet2_latitude")
-            config["packet2"]["longitude"] = request.form.get("packet2_longitude")
-            config["packet2"]["symbol_table"] = request.form.get("packet2_symbol_table")
-            config["packet2"]["symbol_code"] = request.form.get("packet2_symbol_code")
-            config["packet2"]["comment"] = request.form.get("packet2_comment")
-            config["packet2"]["delay_after_packet1_sec"] = int(request.form.get("packet2_delay", 180))
-            
             # Update Intervals
             config.setdefault("intervals", {})
             config["intervals"]["loop_interval_sec"] = int(request.form.get("loop_interval_sec", 900))
+            
+            # Update Packets dynamically
+            packets = []
+            for i in range(100):  # Maximum 100 pakete kadar destekler
+                # Formda bu ID'li bir kaynak varsa paketi al
+                if f"packet_{i}_source" in request.form:
+                    packet = {
+                        "enabled": f"packet_{i}_enabled" in request.form,
+                        "source": request.form.get(f"packet_{i}_source", ""),
+                        "destination": request.form.get(f"packet_{i}_destination", "SDNNET,TCPIP*"),
+                        "latitude": request.form.get(f"packet_{i}_latitude", ""),
+                        "longitude": request.form.get(f"packet_{i}_longitude", ""),
+                        "symbol_table": request.form.get(f"packet_{i}_symbol_table", "/"),
+                        "symbol_code": request.form.get(f"packet_{i}_symbol_code", "-"),
+                        "comment": request.form.get(f"packet_{i}_comment", ""),
+                        "delay_sec": int(request.form.get(f"packet_{i}_delay", 0))
+                    }
+                    packets.append(packet)
+            
+            config["packets"] = packets
             
             save_config(config)
             flash("Ayarlar başarıyla kaydedildi!", "success")
@@ -63,6 +60,9 @@ def index():
             flash(f"Hata oluştu: {str(e)}", "danger")
             
         return redirect(url_for("index"))
+        
+    if "packets" not in config:
+        config["packets"] = []
         
     return render_template("index.html", config=config)
 

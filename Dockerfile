@@ -14,7 +14,7 @@ COPY . .
 RUN chmod +x start.sh
 
 # Web sunucusu için portu açın
-EXPOSE 5000
+EXPOSE 6060
 
 # Konteyner başladığında start.sh scriptini çalıştırın
 CMD ["./start.sh"]

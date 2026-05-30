@@ -62,7 +62,46 @@ def get_last_earthquake():
         print(f"Deprem verisi çekilemedi: {e}")
     return ""
 
-def build_packet(pkt_cfg, timestamp, weather_info, quake_info):
+def get_sys_info():
+    try:
+        # Yük Ortalaması (Load Average - 1 dakikalık)
+        load1, load5, load15 = os.getloadavg()
+        
+        # RAM Kullanımı
+        with open('/proc/meminfo', 'r') as f:
+            lines = f.readlines()
+        mem_total = mem_avail = mem_free = 0
+        for line in lines:
+            if line.startswith('MemTotal:'):
+                mem_total = int(line.split()[1])
+            elif line.startswith('MemFree:'):
+                mem_free = int(line.split()[1])
+            elif line.startswith('MemAvailable:'):
+                mem_avail = int(line.split()[1])
+        if mem_avail == 0: mem_avail = mem_free
+        mem_used = mem_total - mem_avail
+        ram_percent = (mem_used / mem_total) * 100 if mem_total > 0 else 0
+        
+        # Çalışma Süresi (Uptime)
+        with open('/proc/uptime', 'r') as f:
+            uptime_seconds = float(f.readline().split()[0])
+        uptime_days = int(uptime_seconds // 86400)
+        uptime_hours = int((uptime_seconds % 86400) // 3600)
+        
+        if uptime_days > 0:
+            uptime_str = f"{uptime_days}d{uptime_hours}h"
+        else:
+            uptime_str = f"{uptime_hours}h"
+            
+        return {
+            "load": f"{load1:.2f}",
+            "ram": f"{ram_percent:.1f}%",
+            "uptime": uptime_str
+        }
+    except Exception as e:
+        return {"load": "N/A", "ram": "N/A", "uptime": "N/A"}
+
+def build_packet(pkt_cfg, timestamp, weather_info, quake_info, sys_info):
     if not pkt_cfg.get("enabled", False):
         return None
         
@@ -71,7 +110,10 @@ def build_packet(pkt_cfg, timestamp, weather_info, quake_info):
     comment = pkt_cfg.get("comment", "").format(
         weather=weather_info,
         weather_short=weather_short,
-        quake=quake_info
+        quake=quake_info,
+        load=sys_info["load"],
+        ram=sys_info["ram"],
+        uptime=sys_info["uptime"]
     )
     
     packet = f"{pkt_cfg['source']}>{pkt_cfg['destination']}:@{timestamp}{pkt_cfg['latitude']}{pkt_cfg['symbol_table']}{pkt_cfg['longitude']}{pkt_cfg['symbol_code']}{comment}"
@@ -91,11 +133,12 @@ def send_multiple_beacons():
     # Anlık verileri çek
     weather_info = get_korgan_weather()
     quake_info = get_last_earthquake()
+    sys_info = get_sys_info()
     
     packets = config.get("packets", [])
     
     for i, pkt_cfg in enumerate(packets):
-        packet = build_packet(pkt_cfg, timestamp, weather_info, quake_info)
+        packet = build_packet(pkt_cfg, timestamp, weather_info, quake_info, sys_info)
         
         if packet:
             send_beacon(config, packet)

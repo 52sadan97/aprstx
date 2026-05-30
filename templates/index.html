@@ -92,12 +92,12 @@
     <div class="help-section shadow-sm">
         <h5><i class="fa-solid fa-circle-info"></i> Değişken (Kod) Kullanım Rehberi</h5>
         <p class="mb-2">Paketlerin <strong>Açıklama (Comment)</strong> alanında aşağıdaki kodları kullanarak anlık verileri dinamik olarak mesajınıza ekleyebilirsiniz:</p>
-        <ul class="mb-0">
+        <ul class="mb-2">
             <li><span class="code-var">{weather}</span> : Tam hava durumu bilgisini çeker. (Örn: <em>Korgan: 12.5C Ruzgar:10km/h</em>)</li>
             <li><span class="code-var">{weather_short}</span> : Kısa hava durumu (Sadece sıcaklık) çeker. (Örn: <em>Korgan: 12.5C</em>)</li>
             <li><span class="code-var">{quake}</span> : Türkiye'deki son deprem bilgisini çeker. (Örn: <em>Son Deprem: Akdeniz 3.9</em>)</li>
         </ul>
-        <small class="text-muted mt-2 d-block"><i class="fa-solid fa-lightbulb"></i> Örnek kullanım: <code>145.500MHz Dinlemede | {weather_short} | {quake}</code></small>
+        <p class="mb-0"><i class="fa-solid fa-mountain text-warning"></i> <strong>Rakım Bilgisi (Altitude):</strong> APRS protokolünde rakımı bildirmek için açıklama sonuna <span class="code-var">/A=XXXXXX</span> eklenir (Değer her zaman 6 haneli <strong>Feet</strong> cinsindendir). Örneğin 765 metre rakım için <code>/A=002510</code> kullanılır.</p>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -179,21 +179,36 @@
                             <input type="text" class="form-control" name="packet_{{ loop.index0 }}_longitude" value="{{ packet.get('longitude', '') }}">
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
+                    
+                    <!-- Sembol Seçici Alanı -->
+                    <div class="row align-items-end mb-3">
+                        <div class="col-md-3 mb-3 mb-md-0">
+                            <label class="form-label text-warning"><i class="fa-solid fa-icons"></i> Hazır Sembol Seçici</label>
+                            <select class="form-select" onchange="setSymbol(this, {{ loop.index0 }})">
+                                <option value="">-- Görsel Sembol Seçin --</option>
+                                <option value="/,-">🏠 Ev (House)</option>
+                                <option value="/,>">🚗 Araba (Car)</option>
+                                <option value="/,y">📡 Yönlü Anten (Yagi)</option>
+                                <option value="/,[">📱 El Telsizi (Handheld)</option>
+                                <option value="/,_">☁️ Hava İstasyonu (WX)</option>
+                                <option value="/,I">🌐 TCP/IP İstasyonu</option>
+                                <option value="/,#">🔁 Digipeater</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 mb-3 mb-md-0">
                             <label class="form-label">Sembol Tablosu</label>
-                            <input type="text" class="form-control" name="packet_{{ loop.index0 }}_symbol_table" value="{{ packet.get('symbol_table', '/') }}">
+                            <input type="text" class="form-control" name="packet_{{ loop.index0 }}_symbol_table" id="sym_tab_{{ loop.index0 }}" value="{{ packet.get('symbol_table', '/') }}">
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-2 mb-3 mb-md-0">
                             <label class="form-label">Sembol Kodu</label>
-                            <input type="text" class="form-control" name="packet_{{ loop.index0 }}_symbol_code" value="{{ packet.get('symbol_code', '-') }}">
+                            <input type="text" class="form-control" name="packet_{{ loop.index0 }}_symbol_code" id="sym_cod_{{ loop.index0 }}" value="{{ packet.get('symbol_code', '-') }}">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Bu paketi gönderdikten sonraki bekleme süresi (Saniye)</label>
+                        <div class="col-md-5 mb-3 mb-md-0">
+                            <label class="form-label">Bu paketi gönderdikten sonraki bekleme süresi (Sn)</label>
                             <input type="number" class="form-control" name="packet_{{ loop.index0 }}_delay" value="{{ packet.get('delay_sec', 0) }}">
-                            <small class="text-muted">Son paket için 0 bırakabilirsiniz.</small>
                         </div>
                     </div>
+                    
                     <div class="mb-3">
                         <label class="form-label">Açıklama (Comment)</label>
                         <textarea class="form-control" name="packet_{{ loop.index0 }}_comment" rows="2">{{ packet.get('comment', '') }}</textarea>
@@ -210,13 +225,23 @@
     </form>
 </div>
 
-<!-- Javascript for dynamic packet adding -->
+<!-- Javascript for dynamic packet adding and symbol selection -->
 <script>
     let packetCount = document.querySelectorAll('.packet-card').length;
 
+    // Sembol tablosu ve kodunu otomatik doldurma
+    function setSymbol(selectElement, index) {
+        if (!selectElement.value) return;
+        const parts = selectElement.value.split(',');
+        if (parts.length === 2) {
+            document.getElementById(`sym_tab_${index}`).value = parts[0];
+            document.getElementById(`sym_cod_${index}`).value = parts[1];
+        }
+    }
+
     function addPacket() {
         const container = document.getElementById('packets-container');
-        const currentIndex = packetCount; // Use packetCount to avoid ID conflicts
+        const currentIndex = packetCount; 
         packetCount++;
         
         const packetHTML = `
@@ -250,21 +275,35 @@
                             <input type="text" class="form-control" name="packet_${currentIndex}_longitude" value="">
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
+                    
+                    <div class="row align-items-end mb-3">
+                        <div class="col-md-3 mb-3 mb-md-0">
+                            <label class="form-label text-warning"><i class="fa-solid fa-icons"></i> Hazır Sembol Seçici</label>
+                            <select class="form-select" onchange="setSymbol(this, ${currentIndex})">
+                                <option value="">-- Görsel Sembol Seçin --</option>
+                                <option value="/,-">🏠 Ev (House)</option>
+                                <option value="/,>">🚗 Araba (Car)</option>
+                                <option value="/,y">📡 Yönlü Anten (Yagi)</option>
+                                <option value="/,[">📱 El Telsizi (Handheld)</option>
+                                <option value="/,_">☁️ Hava İstasyonu (WX)</option>
+                                <option value="/,I">🌐 TCP/IP İstasyonu</option>
+                                <option value="/,#">🔁 Digipeater</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 mb-3 mb-md-0">
                             <label class="form-label">Sembol Tablosu</label>
-                            <input type="text" class="form-control" name="packet_${currentIndex}_symbol_table" value="/">
+                            <input type="text" class="form-control" name="packet_${currentIndex}_symbol_table" id="sym_tab_${currentIndex}" value="/">
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-2 mb-3 mb-md-0">
                             <label class="form-label">Sembol Kodu</label>
-                            <input type="text" class="form-control" name="packet_${currentIndex}_symbol_code" value="-">
+                            <input type="text" class="form-control" name="packet_${currentIndex}_symbol_code" id="sym_cod_${currentIndex}" value="-">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Bu paketi gönderdikten sonraki bekleme süresi (Saniye)</label>
+                        <div class="col-md-5 mb-3 mb-md-0">
+                            <label class="form-label">Bu paketi gönderdikten sonraki bekleme süresi (Sn)</label>
                             <input type="number" class="form-control" name="packet_${currentIndex}_delay" value="0">
-                            <small class="text-muted">Son paket için 0 bırakabilirsiniz.</small>
                         </div>
                     </div>
+                    
                     <div class="mb-3">
                         <label class="form-label">Açıklama (Comment)</label>
                         <textarea class="form-control" name="packet_${currentIndex}_comment" rows="2"></textarea>
@@ -281,7 +320,6 @@
             const card = document.getElementById(`packet-card-${index}`);
             if (card) {
                 card.remove();
-                // updatePacketNumbers(); // İsteğe bağlı
             }
         }
     }

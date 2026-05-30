@@ -19,6 +19,17 @@
       "symbol_code": "-",
       "comment": "145.500MHz Dinlemede | {weather_short} | Kurban Bayraminiz Mubarek Olsun /A=002657",
       "delay_sec": 180
+    },
+    {
+      "enabled": true,
+      "source": "TA7KES-2",
+      "destination": "SDNNET,TCPIP*",
+      "latitude": "4049.34N",
+      "longitude": "03720.77E",
+      "symbol_table": "/",
+      "symbol_code": "y",
+      "comment": "433.500MHz Dinlemede | {weather} | {quake} | Op. Ertugrul SADAN /A=002510",
+      "delay_sec": 0
     }
   ]
 }

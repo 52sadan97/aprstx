@@ -1,0 +1,24 @@
+{
+  "aprs": {
+    "callsign": "N0CALL",
+    "passcode": "12345",
+    "server": "euro.aprs2.net",
+    "port": 14580
+  },
+  "intervals": {
+    "loop_interval_sec": 900
+  },
+  "packets": [
+    {
+      "enabled": true,
+      "source": "N0CALL-1",
+      "destination": "APRS,TCPIP*",
+      "latitude": "0000.00N",
+      "longitude": "00000.00E",
+      "symbol_table": "/",
+      "symbol_code": "-",
+      "comment": "Test Packet",
+      "delay_sec": 0
+    }
+  ]
+}

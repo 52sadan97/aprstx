@@ -1,11 +1,21 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
+from functools import wraps
 import json
 import os
 
 app = Flask(__name__)
 app.secret_key = "super_secret_key_aprstx" # Change for production if needed
+PASSWORD = "SdnNET1997"
 
 CONFIG_FILE = "config.json"
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 def load_config():
     if not os.path.exists(CONFIG_FILE):
@@ -17,7 +27,25 @@ def save_config(config):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=4)
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        if request.form.get("password") == PASSWORD:
+            session['logged_in'] = True
+            flash("Giriş başarılı!", "success")
+            return redirect(url_for("index"))
+        else:
+            flash("Hatalı şifre!", "danger")
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.pop('logged_in', None)
+    flash("Çıkış yapıldı.", "info")
+    return redirect(url_for("login"))
+
 @app.route("/", methods=["GET", "POST"])
+@login_required
 def index():
     config = load_config()
     

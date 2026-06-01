@@ -141,7 +141,8 @@ def get_solar_data():
         req = urllib.request.Request(url_sfi, headers={'User-Agent': 'APRSTX/1.0'})
         with urllib.request.urlopen(req, timeout=10) as response:
             data = json.loads(response.read().decode())
-            sfi_val = data.get('Flux', '--')
+            if len(data) > 0:
+                sfi_val = data[-1].get('flux', '--')
     except Exception as e:
         print(f"Solar flux çekilemedi: {e}")
     
@@ -151,12 +152,13 @@ def get_solar_data():
         req = urllib.request.Request(url_k, headers={'User-Agent': 'APRSTX/1.0'})
         with urllib.request.urlopen(req, timeout=10) as response:
             data = json.loads(response.read().decode())
-            if len(data) > 1:
-                kp_val = data[-1][1]  # Son satırın Kp değeri
-                kp_num = float(kp_val)
-                if kp_num <= 2: k_desc = "Sakin"
-                elif kp_num <= 4: k_desc = "Aktif"
-                else: k_desc = "Firtina"
+            if len(data) > 0:
+                kp_val = data[-1].get('Kp', '--')
+                if kp_val != '--':
+                    kp_num = float(kp_val)
+                    if kp_num <= 2: k_desc = "Sakin"
+                    elif kp_num <= 4: k_desc = "Aktif"
+                    else: k_desc = "Firtina"
     except Exception as e:
         print(f"K-Index çekilemedi: {e}")
     

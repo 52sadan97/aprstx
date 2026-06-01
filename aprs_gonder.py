@@ -29,40 +29,241 @@ def send_beacon(config, packet):
         print(f"Hata: {e}")
     sys.stdout.flush()
 
-def get_korgan_weather():
+class SafeDict(dict):
+    """Bilinmeyen değişkenleri olduğu gibi bırakan güvenli sözlük.
+    Örn: Kullanıcı {bilinmeyen} yazarsa hata vermez, olduğu gibi kalır."""
+    def __missing__(self, key):
+        return '{' + key + '}'
+
+# ============================================================
+# VERİ KAYNAKLARI
+# ============================================================
+
+def get_all_weather_data():
+    """Hava durumu + gün doğumu/batımı (Open-Meteo, tek API çağrısı)"""
     try:
-        url = "https://api.open-meteo.com/v1/forecast?latitude=40.8065&longitude=37.3424&current_weather=true"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        url = ("https://api.open-meteo.com/v1/forecast?"
+               "latitude=40.8065&longitude=37.3424"
+               "&current=temperature_2m,relative_humidity_2m,apparent_temperature,"
+               "precipitation,uv_index,wind_speed_10m"
+               "&daily=sunrise,sunset"
+               "&timezone=Europe/Istanbul&forecast_days=1")
+        req = urllib.request.Request(url, headers={'User-Agent': 'APRSTX/1.0'})
         with urllib.request.urlopen(req, timeout=10) as response:
             data = json.loads(response.read().decode())
-            temp = data['current_weather']['temperature']
-            wind = data['current_weather']['windspeed']
-            return f"Korgan: {temp}C Ruzgar:{wind}km/h"
+            c = data['current']
+            d = data.get('daily', {})
+            
+            temp = c['temperature_2m']
+            wind = c['wind_speed_10m']
+            humidity = int(c['relative_humidity_2m'])
+            feels = c['apparent_temperature']
+            precip = c['precipitation']
+            uv = int(c['uv_index'])
+            
+            sr = d.get('sunrise', [''])[0]
+            ss = d.get('sunset', [''])[0]
+            sunrise = sr.split('T')[1][:5] if 'T' in str(sr) else '--:--'
+            sunset = ss.split('T')[1][:5] if 'T' in str(ss) else '--:--'
+            
+            return {
+                "weather": f"Korgan: {temp}C Ruzgar:{wind}km/h",
+                "weather_short": f"Korgan: {temp}C",
+                "humidity": f"Nem:%{humidity}",
+                "uv": f"UV:{uv}",
+                "feels_like": f"Hissedilen:{feels:.1f}C",
+                "precip": f"Yagis:{precip}mm",
+                "sunrise": f"Dogum:{sunrise}",
+                "sunset": f"Batim:{sunset}",
+            }
     except Exception as e:
         print(f"Hava durumu çekilemedi: {e}")
-        return "Korgan: --C"
+        return {
+            "weather": "Korgan: --C", "weather_short": "Korgan: --C",
+            "humidity": "Nem:--%", "uv": "UV:--", "feels_like": "Hissedilen:--C",
+            "precip": "Yagis:--mm", "sunrise": "Dogum:--:--", "sunset": "Batim:--:--",
+        }
+
+def get_air_quality():
+    """Hava kalitesi - PM2.5, AQI (Open-Meteo Air Quality)"""
+    try:
+        url = ("https://air-quality-api.open-meteo.com/v1/air-quality?"
+               "latitude=40.8065&longitude=37.3424"
+               "&current=pm2_5,pm10,european_aqi")
+        req = urllib.request.Request(url, headers={'User-Agent': 'APRSTX/1.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode())
+            c = data['current']
+            aqi = int(c['european_aqi'])
+            pm25 = c['pm2_5']
+            
+            if aqi <= 20: seviye = "Iyi"
+            elif aqi <= 40: seviye = "Orta"
+            elif aqi <= 60: seviye = "Hassas"
+            elif aqi <= 80: seviye = "Kotu"
+            else: seviye = "CokKotu"
+            
+            return {"aqi": f"AQI:{aqi}({seviye})", "pm25": f"PM2.5:{pm25:.1f}"}
+    except Exception as e:
+        print(f"Hava kalitesi çekilemedi: {e}")
+        return {"aqi": "AQI:--", "pm25": "PM2.5:--"}
 
 def get_last_earthquake():
+    """Türkiye'deki son deprem bilgisi (Kandilli Rasathanesi)"""
     try:
         url = "https://api.orhanaydogdu.com.tr/deprem/kandilli/live"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        req = urllib.request.Request(url, headers={'User-Agent': 'APRSTX/1.0'})
         with urllib.request.urlopen(req, timeout=10) as response:
             data = json.loads(response.read().decode())
             # 3.0 büyüklüğünden büyük ilk depremi bul
             for eq in data.get('result', []):
                 if eq.get('mag', 0) >= 3.0:
                     city = eq['title'].split('(')[-1].replace(')', '').strip().title()
-                    return f"Son Deprem: {city} {eq['mag']}"
+                    return {"quake": f"Son Deprem: {city} {eq['mag']}"}
             # Yoksa en son depremi al
             if data.get('result'):
                 eq = data['result'][0]
                 city = eq['title'].split('(')[-1].replace(')', '').strip().title()
-                return f"Son Deprem: {city} {eq['mag']}"
+                return {"quake": f"Son Deprem: {city} {eq['mag']}"}
     except Exception as e:
         print(f"Deprem verisi çekilemedi: {e}")
-    return ""
+    return {"quake": ""}
+
+def get_solar_data():
+    """Güneş aktivitesi ve propagasyon verileri (NOAA SWPC) - HAM radio için"""
+    sfi_val = "--"
+    kp_val = "--"
+    k_desc = ""
+    
+    try:
+        # Solar Flux Index (10.7cm)
+        url_sfi = "https://services.swpc.noaa.gov/products/summary/10cm-flux.json"
+        req = urllib.request.Request(url_sfi, headers={'User-Agent': 'APRSTX/1.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode())
+            sfi_val = data.get('Flux', '--')
+    except Exception as e:
+        print(f"Solar flux çekilemedi: {e}")
+    
+    try:
+        # Planetary K-Index
+        url_k = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"
+        req = urllib.request.Request(url_k, headers={'User-Agent': 'APRSTX/1.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode())
+            if len(data) > 1:
+                kp_val = data[-1][1]  # Son satırın Kp değeri
+                kp_num = float(kp_val)
+                if kp_num <= 2: k_desc = "Sakin"
+                elif kp_num <= 4: k_desc = "Aktif"
+                else: k_desc = "Firtina"
+    except Exception as e:
+        print(f"K-Index çekilemedi: {e}")
+    
+    k_str = f"K:{kp_val}({k_desc})" if k_desc else f"K:{kp_val}"
+    
+    return {
+        "sfi": f"SFI:{sfi_val}",
+        "kindex": k_str,
+        "solar": f"SFI:{sfi_val} {k_str}",
+    }
+
+def get_exchange_rates():
+    """Döviz kurları - USD/TRY, EUR/TRY (Frankfurter / ECB verisi)"""
+    usd_try = "--"
+    eur_try = "--"
+    
+    try:
+        url = "https://api.frankfurter.dev/v1/latest?base=USD&symbols=TRY"
+        req = urllib.request.Request(url, headers={'User-Agent': 'APRSTX/1.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode())
+            usd_try = f"{data['rates']['TRY']:.2f}"
+    except Exception as e:
+        print(f"USD kuru çekilemedi: {e}")
+    
+    try:
+        url = "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=TRY"
+        req = urllib.request.Request(url, headers={'User-Agent': 'APRSTX/1.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode())
+            eur_try = f"{data['rates']['TRY']:.2f}"
+    except Exception as e:
+        print(f"EUR kuru çekilemedi: {e}")
+    
+    return {
+        "dolar": f"USD:{usd_try}",
+        "euro": f"EUR:{eur_try}",
+        "kur": f"USD:{usd_try} EUR:{eur_try}",
+    }
+
+def get_prayer_times():
+    """Namaz vakitleri - Diyanet hesaplama yöntemi (AlAdhan API)"""
+    try:
+        now_tr = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=3)))
+        date_str = now_tr.strftime("%d-%m-%Y")
+        url = (f"https://api.aladhan.com/v1/timings/{date_str}"
+               f"?latitude=40.8065&longitude=37.3424&method=13"
+               f"&timezonestring=Europe/Istanbul")
+        req = urllib.request.Request(url, headers={'User-Agent': 'APRSTX/1.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode())
+            t = data['data']['timings']
+            
+            # Zaman dizelerini temizle (bazen " (EET)" gibi ekler olabiliyor)
+            def clean(time_str):
+                return time_str.split(' ')[0] if ' ' in time_str else time_str
+            
+            fajr = clean(t['Fajr'])
+            dhuhr = clean(t['Dhuhr'])
+            asr = clean(t['Asr'])
+            maghrib = clean(t['Maghrib'])
+            isha = clean(t['Isha'])
+            
+            # Sıradaki vakti bul
+            current_time = now_tr.strftime("%H:%M")
+            prayer_order = [
+                ("Imsak", fajr),
+                ("Gunes", clean(t['Sunrise'])),
+                ("Ogle", dhuhr),
+                ("Ikindi", asr),
+                ("Aksam", maghrib),
+                ("Yatsi", isha),
+            ]
+            
+            next_name, next_time = prayer_order[0]
+            for name, ptime in prayer_order:
+                if ptime > current_time:
+                    next_name = name
+                    next_time = ptime
+                    break
+            
+            return {
+                "namaz": f"Ogle:{dhuhr} Ikindi:{asr} Aksam:{maghrib}",
+                "ezan": f"Siradaki:{next_name} {next_time}",
+                "imsak": f"Imsak:{fajr}",
+            }
+    except Exception as e:
+        print(f"Namaz vakitleri çekilemedi: {e}")
+        return {"namaz": "", "ezan": "", "imsak": ""}
+
+def get_sea_temperature():
+    """Karadeniz deniz suyu sıcaklığı (Open-Meteo Marine)"""
+    try:
+        url = ("https://marine-api.open-meteo.com/v1/marine?"
+               "latitude=41.0&longitude=37.3"
+               "&current=sea_surface_temperature")
+        req = urllib.request.Request(url, headers={'User-Agent': 'APRSTX/1.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode())
+            sea_temp = data['current']['sea_surface_temperature']
+            return {"deniz": f"Karadeniz:{sea_temp:.1f}C"}
+    except Exception as e:
+        print(f"Deniz sıcaklığı çekilemedi: {e}")
+        return {"deniz": "Karadeniz:--C"}
 
 def get_sys_info():
+    """Sunucu sistem bilgileri (sadece Linux)"""
     try:
         # Yük Ortalaması (Load Average - 1 dakikalık)
         load1, load5, load15 = os.getloadavg()
@@ -101,22 +302,21 @@ def get_sys_info():
     except Exception as e:
         return {"load": "N/A", "ram": "N/A", "uptime": "N/A"}
 
-def build_packet(pkt_cfg, timestamp, weather_info, quake_info, sys_info):
+# ============================================================
+# PAKET OLUŞTURMA VE GÖNDERME
+# ============================================================
+
+def build_packet(pkt_cfg, timestamp, all_data):
+    """APRS paketini oluşturur. Comment alanındaki {degisken} ifadeleri otomatik doldurulur."""
     if not pkt_cfg.get("enabled", False):
         return None
-        
-    weather_short = weather_info.split(' Ruzgar')[0] if ' Ruzgar' in weather_info else weather_info
     
-    comment = pkt_cfg.get("comment", "").format(
-        weather=weather_info,
-        weather_short=weather_short,
-        quake=quake_info,
-        load=sys_info["load"],
-        ram=sys_info["ram"],
-        uptime=sys_info["uptime"]
-    )
+    # SafeDict ile bilinmeyen değişkenler hata vermez, olduğu gibi kalır
+    comment = pkt_cfg.get("comment", "").format_map(SafeDict(all_data))
     
-    packet = f"{pkt_cfg['source']}>{pkt_cfg['destination']}:@{timestamp}{pkt_cfg['latitude']}{pkt_cfg['symbol_table']}{pkt_cfg['longitude']}{pkt_cfg['symbol_code']}{comment}"
+    packet = (f"{pkt_cfg['source']}>{pkt_cfg['destination']}:"
+              f"@{timestamp}{pkt_cfg['latitude']}{pkt_cfg['symbol_table']}"
+              f"{pkt_cfg['longitude']}{pkt_cfg['symbol_code']}{comment}")
     return packet
 
 def send_multiple_beacons():
@@ -130,15 +330,27 @@ def send_multiple_beacons():
     now = datetime.datetime.now(datetime.timezone.utc)
     timestamp = now.strftime("%d%H%M") + "z"
     
-    # Anlık verileri çek
-    weather_info = get_korgan_weather()
-    quake_info = get_last_earthquake()
-    sys_info = get_sys_info()
+    # Tüm veri kaynaklarını tek sözlükte topla
+    print("Veriler çekiliyor...")
+    sys.stdout.flush()
+    
+    all_data = {}
+    all_data.update(get_all_weather_data())
+    all_data.update(get_air_quality())
+    all_data.update(get_last_earthquake())
+    all_data.update(get_solar_data())
+    all_data.update(get_exchange_rates())
+    all_data.update(get_prayer_times())
+    all_data.update(get_sea_temperature())
+    all_data.update(get_sys_info())
+    
+    print(f"Toplam {len(all_data)} değişken hazır.")
+    sys.stdout.flush()
     
     packets = config.get("packets", [])
     
     for i, pkt_cfg in enumerate(packets):
-        packet = build_packet(pkt_cfg, timestamp, weather_info, quake_info, sys_info)
+        packet = build_packet(pkt_cfg, timestamp, all_data)
         
         if packet:
             send_beacon(config, packet)

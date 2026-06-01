@@ -93,12 +93,16 @@
         <h5><i class="fa-solid fa-circle-info"></i> Değişken (Kod) Kullanım Rehberi</h5>
         <p class="mb-2">Paketlerin <strong>Açıklama (Comment)</strong> alanında aşağıdaki kodları kullanarak anlık verileri dinamik olarak mesajınıza ekleyebilirsiniz:</p>
         <ul class="mb-2">
-            <li><span class="code-var">{weather}</span> : Tam hava durumu bilgisini çeker. (Örn: <em>Korgan: 12.5C Ruzgar:10km/h</em>)</li>
-            <li><span class="code-var">{weather_short}</span> : Kısa hava durumu (Sadece sıcaklık) çeker. (Örn: <em>Korgan: 12.5C</em>)</li>
-            <li><span class="code-var">{quake}</span> : Türkiye'deki son deprem bilgisini çeker. (Örn: <em>Son Deprem: Akdeniz 3.9</em>)</li>
-            <li><span class="code-var">{load}</span> : Sunucunun anlık yük (CPU ortalaması) bilgisini çeker. (Örn: <em>0.15</em>)</li>
-            <li><span class="code-var">{ram}</span> : Sunucunun anlık RAM kullanım yüzdesini çeker. (Örn: <em>45.2%</em>)</li>
-            <li><span class="code-var">{uptime}</span> : Sunucunun ne kadar süredir açık olduğunu çeker. (Örn: <em>12d4h</em> veya <em>5h</em>)</li>
+            <li><span class="code-var">{weather_short}</span> : Kısa hava durumu (Örn: <em>Korgan: 12.5C</em>) | <span class="code-var">{weather}</span> : Rüzgar ile tam bilgi</li>
+            <li><span class="code-var">{humidity}</span> : <em>Nem:%72</em> | <span class="code-var">{feels_like}</span> : <em>Hissedilen:28C</em> | <span class="code-var">{uv}</span> : <em>UV:6</em> | <span class="code-var">{precip}</span> : <em>Yagis:2.1mm</em></li>
+            <li><span class="code-var">{sunrise}</span> : <em>Dogum:05:22</em> | <span class="code-var">{sunset}</span> : <em>Batim:20:14</em></li>
+            <li><span class="code-var">{aqi}</span> : Hava Kalitesi (Örn: <em>AQI:42(Iyi)</em>) | <span class="code-var">{pm25}</span> : <em>PM2.5:12.4</em></li>
+            <li><span class="code-var">{quake}</span> : Türkiye'deki son deprem (Örn: <em>Son Deprem: Akdeniz 3.9</em>)</li>
+            <li><span class="code-var">{solar}</span> : Güneş & Propagasyon (Örn: <em>SFI:148 K:2(Sakin)</em>) | <span class="code-var">{sfi}</span> veya <span class="code-var">{kindex}</span> olarak ayrı ayrı alınabilir</li>
+            <li><span class="code-var">{kur}</span> : Döviz (Örn: <em>USD:38.42 EUR:43.15</em>) | <span class="code-var">{dolar}</span> veya <span class="code-var">{euro}</span> olarak ayrı ayrı alınabilir</li>
+            <li><span class="code-var">{namaz}</span> : <em>Ogle:12:45 Ikindi:16:32 Aksam:20:18</em> | <span class="code-var">{ezan}</span> : <em>Siradaki:Aksam 20:18</em> | <span class="code-var">{imsak}</span> : <em>Imsak:04:12</em></li>
+            <li><span class="code-var">{deniz}</span> : Karadeniz sıcaklığı (Örn: <em>Karadeniz:22.1C</em>)</li>
+            <li><span class="code-var">{load}</span>, <span class="code-var">{ram}</span>, <span class="code-var">{uptime}</span> : Sunucu sistem bilgileri</li>
         </ul>
         <p class="mb-0"><i class="fa-solid fa-mountain text-warning"></i> <strong>Rakım Bilgisi (Altitude):</strong> APRS protokolünde rakımı bildirmek için açıklama sonuna <span class="code-var">/A=XXXXXX</span> eklenir (Değer her zaman 6 haneli <strong>Feet</strong> cinsindendir). Örneğin 765 metre rakım için <code>/A=002510</code> kullanılır.</p>
     </div>

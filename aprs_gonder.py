@@ -127,7 +127,7 @@ def send_multiple_beacons():
         return
 
     # Güncel UTC zamanını alıp APRS formatına (DDHHMMz) çevir
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     timestamp = now.strftime("%d%H%M") + "z"
     
     # Anlık verileri çek
@@ -160,6 +160,7 @@ if __name__ == "__main__":
         print(f"{CONFIG_FILE} bekleniyor...")
         time.sleep(2)
         
+    last_send_time = time.time()
     send_multiple_beacons()
     
     # Döngü
@@ -168,12 +169,15 @@ if __name__ == "__main__":
             config = load_config()
             interval = int(config.get("intervals", {}).get("loop_interval_sec", 900))
         except Exception as e:
-            print(f"Konfigürasyon okunamadı: {e}, varsayılan 900sn bekleniyor.")
+            # print(f"Konfigürasyon okunamadı: {e}, varsayılan 900sn bekleniyor.") # Çok log basmaması için kapatıldı
             interval = 900
             
-        print(f"Genel döngü: Bir sonraki gönderim için {interval} saniye bekleniyor...")
-        sys.stdout.flush()
-        time.sleep(interval)
-        print("Zamanı geldi, paketler gönderiliyor...")
-        sys.stdout.flush()
-        send_multiple_beacons()
+        now = time.time()
+        if now - last_send_time >= interval:
+            print("Zamanı geldi, paketler gönderiliyor...")
+            sys.stdout.flush()
+            send_multiple_beacons()
+            last_send_time = time.time()
+            
+        # 5 saniyede bir konfigürasyonu kontrol et, böylece arayüzden yapılan değişiklik anında işleme alınır
+        time.sleep(5)

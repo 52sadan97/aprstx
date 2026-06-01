@@ -42,8 +42,9 @@ docker build -t aprstx_app .
 
 ### 4. Konteyneri Başlatın
 ```bash
-# Web arayüzü 6060 portunda çalışacak şekilde başlatılır
-docker run -d --name aprstx -p 6060:6060 --restart always aprstx_app
+# Web arayüzü 6060 portunda çalışacak şekilde başlatılır.
+# Verilerin kaybolmaması için klasörü bağlamak zorunludur (-v).
+docker run -d --name aprstx -p 6060:6060 -v $(pwd):/app --restart always aprstx_app
 ```
 
 > Artık web tarayıcınızdan `http://<sunucu-ip-adresiniz>:6060` adresine giderek sistemi yönetmeye başlayabilirsiniz!
